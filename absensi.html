@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Absensi Mahasiswa</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: linear-gradient(135deg, #f3e9ff, #e6f0ff);
+    }
+    body { display: flex; flex-direction: column; }
+    main { flex: 1; }
+    .navbar {
+      background: linear-gradient(90deg, #a18cd1, #fbc2eb);
+      color: white;
+    }
+    .card {
+      border: none;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .btn-primary {
+      background: linear-gradient(45deg, #9b59b6, #8e44ad);
+      border: none;
+    }
+    .btn-danger {
+      background: #e74c3c;
+      border: none;
+    }
+    thead {
+      background: linear-gradient(90deg, #a18cd1, #fbc2eb);
+      color: white;
+    }
+    footer {
+      text-align: center;
+      padding: 10px;
+      color: #fff;
+      background: linear-gradient(90deg, #a18cd1, #fbc2eb);
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark">
+  <div class="container d-flex justify-content-between">
+    <a class="navbar-brand" href="#">Absensi Mahasiswa</a>
+    <button id="logoutBtn" class="btn btn-sm btn-danger">Logout</button>
+  </div>
+</nav>
+
+<main class="container my-4">
+  <ul class="nav nav-tabs" id="tabAbsensi" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" id="form-tab" data-bs-toggle="tab" data-bs-target="#form" type="button">Form Absensi</button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="data-tab" data-bs-toggle="tab" data-bs-target="#data" type="button">Data Absensi</button>
+    </li>
+  </ul>
+
+  <div class="tab-content pt-3">
+    <!-- FORM -->
+    <div class="tab-pane fade show active" id="form">
+      <div class="card p-3">
+        <h5>Isi Form Absensi</h5>
+        <div id="notif" class="alert alert-info d-none"></div>
+        <form id="form-absensi">
+          <input type="hidden" name="_id" id="_id">
+          <input type="text" class="form-control mb-2" name="nim" placeholder="NIM Mahasiswa" required>
+          <input type="text" class="form-control mb-2" name="nama" placeholder="Nama Mahasiswa" required>
+          <input type="date" class="form-control mb-2" name="tanggal" required>
+          <input type="time" class="form-control mb-2" name="jam_masuk" required>
+          <input type="time" class="form-control mb-2" name="jam_keluar" required>
+          <select class="form-control mb-2" name="status" required>
+            <option value="">Pilih Status</option>
+            <option>Hadir</option>
+            <option>Sakit</option>
+            <option>Izin</option>
+            <option>Alpha</option>
+          </select>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary w-100" type="submit">Simpan</button>
+            <button class="btn btn-light w-100" type="reset">Reset</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="tab-pane fade" id="data">
+      <div class="card p-3">
+        <h5>Data Absensi</h5>
+        <div class="d-flex gap-2 my-2">
+          <input type="text" id="search" class="form-control" placeholder="Cari NIM atau Nama...">
+          <select id="filterStatus" class="form-select">
+            <option value="">Semua Status</option>
+            <option>Hadir</option>
+            <option>Sakit</option>
+            <option>Izin</option>
+            <option>Alpha</option>
+          </select>
+        </div>
+        <div id="loading" class="text-center my-2 text-muted">Memuat data...</div>
+        <table class="table table-hover mt-3">
+          <thead>
+            <tr>
+              <th>NIM</th><th>Nama</th><th>Tanggal</th><th>Masuk</th><th>Keluar</th><th>Status</th><th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="data-absensi"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>&copy; 2025 Sistem Absensi | Kelompok Cencen</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+if (localStorage.getItem('login') !== 'true') {
+  window.location.href = 'login.html';
+}
+
+document.getElementById('logoutBtn').onclick = () => {
+  localStorage.removeItem('login');
+  window.location.href = 'login.html';
+};
+
+const form = document.getElementById('form-absensi');
+const tbody = document.getElementById('data-absensi');
+const api = 'http://localhost:3000/absensi';
+const notif = document.getElementById('notif');
+const loading = document.getElementById('loading');
+
+form.onsubmit = async (e) => {
+  e.preventDefault();
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+  const id = data._id;
+  delete data._id;
+
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `${api}/${id}` : api;
+
+  await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+
+  notif.classList.remove('d-none');
+  notif.classList.add('alert-success');
+  notif.innerText = id ? 'Data berhasil diperbarui.' : 'Data berhasil disimpan.';
+  setTimeout(() => notif.classList.add('d-none'), 3000);
+
+  form.reset();
+  loadData();
+  document.querySelector('#data-tab').click();
+};
+
+async function loadData() {
+  loading.style.display = 'block';
+  const res = await fetch(api);
+  const data = await res.json();
+  allData = data;
+  loading.style.display = 'none';
+  renderTable(data);
+}
+
+function renderTable(data) {
+  tbody.innerHTML = '';
+  if (data.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center">Belum ada data</td></tr>`;
+    return;
+  }
+
+  data.forEach(item => {
+    tbody.innerHTML += `
+    <tr>
+      <td>${item.nim}</td>
+      <td>${item.nama}</td>
+      <td>${item.tanggal}</td>
+      <td>${item.jam_masuk}</td>
+      <td>${item.jam_keluar}</td>
+      <td>${item.status}</td>
+      <td>
+        <button onclick="edit('${item._id}')" class="btn btn-primary btn-sm">Edit</button>
+        <button onclick="hapus('${item._id}')" class="btn btn-danger btn-sm">Hapus</button>
+      </td>
+    </tr>`;
+  });
+}
+
+async function hapus(id) {
+  if (!confirm('Yakin ingin menghapus?')) return;
+  await fetch(`${api}/${id}`, { method: 'DELETE' });
+  notif.classList.remove('d-none', 'alert-success');
+  notif.classList.add('alert-warning');
+  notif.innerText = 'Data berhasil dihapus.';
+  setTimeout(() => notif.classList.add('d-none'), 3000);
+  loadData();
+}
+
+async function edit(id) {
+  const res = await fetch(`${api}/${id}`);
+  const item = await res.json();
+
+  form._id.value = item._id;
+  form.nim.value = item.nim;
+  form.nama.value = item.nama;
+  form.tanggal.value = item.tanggal;
+  form.jam_masuk.value = item.jam_masuk;
+  form.jam_keluar.value = item.jam_keluar;
+  form.status.value = item.status;
+
+  document.querySelector('#form-tab').click();
+}
+
+let allData = [];
+
+document.getElementById('search').addEventListener('input', function () {
+  const keyword = this.value.toLowerCase();
+  const status = document.getElementById('filterStatus').value;
+  const filtered = allData.filter(item => 
+    (item.nim.toLowerCase().includes(keyword) || item.nama.toLowerCase().includes(keyword)) &&
+    (status === '' || item.status === status)
+  );
+  renderTable(filtered);
+});
+
+document.getElementById('filterStatus').addEventListener('change', function () {
+  document.getElementById('search').dispatchEvent(new Event('input'));
+});
+
+loadData();
+</script>
+</body>
+</html>
